@@ -1,0 +1,45 @@
+import pandas as pd
+import os
+
+data_dir = 'snp_counts/'
+#out_dir = 'snp_counts/'
+
+df = pd.DataFrame()
+for ii in sorted(os.listdir(data_dir))[::-1]:
+    if (ii.startswith('input') or ii.startswith('rep')) and ii.endswith('@NA18517_het_positions.A001-K562_mergedPeaks.BIRDcounts.txt'):
+        df_tmp = pd.read_csv(os.path.join(data_dir, ii), sep='\t', index_col=0, names = [ii.replace('@NA18517_het_positions.A001-K562_mergedPeaks.BIRDcounts.txt', '')+'_ref', ii.replace('@NA18517_het_positions.A001-K562_mergedPeaks.BIRDcounts.txt', '')+'_alt'])
+        df = df.join(df_tmp, how='outer')
+
+df = df.fillna(0)
+df = df.astype(int)
+df.to_csv('snp_counts/NA18517_het_positions.A001-K562_mergedPeaks.BIRDcounts.merged.txt', sep='\t')
+
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+df = pd.read_csv(
+    'snp_counts/NA18517_het_positions.A001-K562_mergedPeaks.BIRDcounts.merged.txt', 
+    sep='\t', 
+    index_col=0)
+
+df.head()
+#max input ref count
+print('REF')
+print(df['input_ref'].max())
+print(df['input_ref'].mean())
+print(df['input_ref'].min())
+#max input alt count
+print('ALT')
+print(df['input_alt'].max())
+print(df['input_alt'].mean())
+print(df['input_alt'].min())
+
+
+df2['rep2'] = (df2['rep3_alt']/df2['input_alt'])/(df2['rep3_ref']/df2['input_ref'])
+df2['rep2'] = (df2['rep2_alt']/df2['input_alt'])/(df2['rep2_ref']/df2['input_ref'])
+df2['rep1'] = (df2['rep1_alt']/df2['input_alt'])/(df2['rep1_ref']/df2['input_ref'])
+df2['rep3'] = ( (df2['rep3_alt']+1) / (df2['input_alt']+1) ) / ( (df2['rep3_ref']+1) / (df2['input_ref']+1) )
+df2['rep2'] = ( (df2['rep2_alt']+1) / (df2['input_alt']+1) ) / ( (df2['rep2_ref']+1) / (df2['input_ref']+1) )
+df2['rep1'] = ( (df2['rep1_alt']+1) / (df2['input_alt']+1) ) / ( (df2['rep1_ref']+1) / (df2['input_ref']+1) )
+df2['avg_effect'] = (df2['rep1'] + df2['rep2'] + df2['rep3'])/3
