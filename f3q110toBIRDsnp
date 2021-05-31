@@ -1,0 +1,71 @@
+#!/bin/bash
+#
+#SBATCH -p new,all
+#SBATCH --mem=64G
+#SBATCH -J pileup_to_BIRDsnp
+#SBATCH -o logs/pileup_to_BIRDsnp.%J.out
+#SBATCH -e logs/pileup_to_BIRDsnp.%J.err
+#SBATCH --array=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=ls331@duke.edu
+
+
+module load bowtie2
+module load samtools
+module load bedtools2
+module load R/3.2.0-gcb01
+module load java/9-gcb01
+source /data/reddylab/software/miniconda2/bin/activate alex
+module load python/3.4.1-fasrc01
+export PYTHONPATH="/home/bmajoros/src/python:${PYTHONPATH}"
+
+
+#NAME=$(head -${SLURM_ARRAY_TASK_ID} pileup_variables.txt | tail -1 | awk '{print $1}')
+#ALIGNMENT=$(head -${SLURM_ARRAY_TASK_ID} pileup_variables.txt | tail -1 | awk '{print $2}')
+
+
+#Use mpileup from samtools to mpileup with DENND1A hetsites previously selected.
+
+samtools mpileup \
+-f /data/reddylab/Reference_Data/Genomes/hg38/hg38.fa \
+-l 1KGP-POPSS-DENND1Alocus-Hetsites.txt \
+/data/reddylab/Laavanya/testBIRD/alignments/1KGP-DENND1A-OP6/1KGP-DENND1A-OP6.f3q10.bam > 1KGP-POPSS-op6.pileup
+
+#Using a script in Alex's folder that parses mpileup to the follwoing columns:
+##ID
+#CHR
+#1-BASED POSITION
+#REF BASE (1=A,2=C,3=G,4=T) THIS IS FOR EASE OF DOWNSTREAM PROCESSING
+#"A" COUNT
+#"C" COUNT
+#"G" COUNT
+#"T" COUNT
+
+
+python /data/reddylab/Alex/reddylab_utils/scripts/parse-pileup-no-vcf.py 1KGP-POPSS-op6.pileup | cat > 1KGP-POPSS-op6.pileup.parsed.txt
+
+
+#Reparsing the mpileup output to only include counts of ref allele and max alt allele. 
+
+paste \
+<( cat  1KGP-POPSS-op5.pileup.parsed.txt \
+        | awk -v OFS='\t' '{if ($4==1) \
+                print $1,$5; \
+                else if ($4==2) \
+                print $1,$6; \
+                else if ($4==3) \
+                print $1,$7; \
+                else if ($4==4) \
+                print $1,$8; }' ) \
+<( cat  1KGP-POPSS-op5.pileup.parsed.txt \
+        | awk -v OFS='\t' '{if ($4==1) \
+                print $6,$7,$8; \
+                else if ($4==2) \
+                print $5,$7,$8; \
+                else if ($4==3) \
+                print $5,$6,$8; \
+                else if ($4==4) \
+                print $5,$6,$7; }' \
+        | awk '{max=$1;for(i=2;i<=NF;i++){if($i > max) max = $i } print max}' ) \
+> BIRDsnpcounts/POPSS-1KGP-op5.DENND1Apileup.parsed.forBIRDcount.txt
